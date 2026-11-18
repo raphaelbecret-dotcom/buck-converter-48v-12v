@@ -1,0 +1,30 @@
+* 48 V -> 12 V / 5 A buck converter - open loop, ideal switch + Schottky diode
+* Step 2 of the project. Run in LTspice: File > Open (or paste into a new .cir), then Run.
+
+* --- Power stage ---
+V1   vin 0   48
+S1   vin sw  g 0 SW                  ; high-side switch, controlled by gate source Vg
+D1   0   sw  DSCH                    ; freewheel Schottky (anode = GND, cathode = sw)
+L1   sw  out 60u Rser=10m            ; L from step 1, 10 mOhm winding resistance (assumption)
+C1   out 0   22u Rser=10m            ; C from step 1, 10 mOhm ESR (assumption)
+Rload out 0  2.4                     ; 12 V / 5 A = 2.4 ohm
+
+* --- Gate drive: 100 kHz, D = 0.25 (on-time 2.48 us + 2 x 20 ns edges = 2.5 us) ---
+Vg   g   0   PULSE(0 10 0 20n 20n 2.48u 10u)
+
+* --- Models (assumed values: edit to match your chosen components) ---
+.model SW   SW(Ron=25m Roff=1Meg Vt=5 Vh=-1)
+.model DSCH D(Is=1u Rs=20m N=1.05 Cjo=100p Vj=0.5 Bv=100 Ibv=1m)
+
+* --- Simulation: 3 ms, steady-state measurements on the last 0.5 ms ---
+.tran 0 3m 0 50n
+
+.meas TRAN Vout_avg AVG V(out)            FROM=2.5m TO=3m
+.meas TRAN Vout_pp  PP  V(out)             FROM=2.5m TO=3m
+.meas TRAN IL_pp    PP  I(L1)              FROM=2.5m TO=3m
+.meas TRAN IL_max   MAX I(L1)              FROM=2.5m TO=3m
+.meas TRAN Pin      AVG -V(vin)*I(V1)      FROM=2.5m TO=3m
+.meas TRAN Pout     AVG V(out)*I(Rload)    FROM=2.5m TO=3m
+.meas TRAN Eff      PARAM Pout/Pin
+
+.end
